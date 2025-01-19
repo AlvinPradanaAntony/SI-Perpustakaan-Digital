@@ -10,13 +10,13 @@
 
 ###
 
-<div align="left">
+<div align="center">
   <img height="335" src="https://github.com/user-attachments/assets/a9f8be24-2fc9-4bff-b8ba-d91874ea3a80"  />
 </div>
 
 ###
 
-<div align="left">
+<div align="center">
   <img height="335" src="https://github.com/user-attachments/assets/b60abc9f-9923-4729-a190-e0dee3661ef1"  />
 </div>
 
