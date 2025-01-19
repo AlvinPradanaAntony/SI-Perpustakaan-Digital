@@ -1,0 +1,9 @@
+Autentifikasi :
+
+#Admin
+Username : admin1
+Password : admin1
+
+#Guest atau User
+Username : kasir1
+Password : kasir1
