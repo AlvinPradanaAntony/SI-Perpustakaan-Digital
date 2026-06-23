@@ -1,0 +1,91 @@
+name: Package release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  PACKAGE_NAME: SI-Perpustakaan-Digital
+
+jobs:
+  package:
+    name: Create downloadable package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build release files
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="${GITHUB_REF_NAME//\//-}"
+          PACKAGE_FILE="${PACKAGE_NAME}-${VERSION}.zip"
+          STAGING_DIR="dist/${PACKAGE_NAME}"
+
+          rm -rf dist
+          mkdir -p "${STAGING_DIR}"
+
+          shopt -s dotglob
+          for item in *; do
+            if [[ "${item}" == ".git" || "${item}" == "dist" ]]; then
+              continue
+            fi
+
+            cp -a "${item}" "${STAGING_DIR}/"
+          done
+          shopt -u dotglob
+
+          {
+            echo "Nama paket: ${PACKAGE_NAME}"
+            echo "Versi/ref: ${GITHUB_REF_NAME}"
+            echo "Commit: ${GITHUB_SHA}"
+            echo "Dibuat pada: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          } > "${STAGING_DIR}/VERSION.txt"
+
+          (cd dist && zip -r "${PACKAGE_FILE}" "${PACKAGE_NAME}")
+          echo "package_version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "package_file=dist/${PACKAGE_FILE}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}-${{ steps.package.outputs.package_version }}
+          path: |
+            ${{ steps.package.outputs.package_file }}
+            README.md
+            Akun login.txt
+            *.accdb
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RELEASE_FILES=(
+            "${{ steps.package.outputs.package_file }}"
+            "README.md"
+            "Akun login.txt"
+            "Aplikasi Perpustakaan Digital.accdb"
+            "Aplikasi Perpustakaan Digital (BackUp).accdb"
+          )
+
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" "${RELEASE_FILES[@]}" --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" "${RELEASE_FILES[@]}" \
+              --title "${PACKAGE_NAME} ${GITHUB_REF_NAME}" \
+              --notes "Paket ZIP berisi seluruh file proyek. README, akun login, dan file ACCDB juga tersedia sebagai unduhan terpisah."
+          fi
